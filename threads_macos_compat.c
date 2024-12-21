@@ -50,8 +50,6 @@
 #include <errno.h>
 #include <sched.h>
 
-#include "utils.h"
-
 #include "threads_macos_compat.h"
 
 int mtx_init(mtx_t *mutex, int type) {
@@ -127,6 +125,19 @@ static void* wrap_thread_func(void *arg) {
     wrapped_thread_t *wrapped = arg;
     wrapped->res = wrapped->actual_func(wrapped->actual_arg);
     return arg;
+}
+
+static void* zmalloc(size_t size) {
+    // prevent zero allocation requests as some malloc implementations may corrupt in that case
+    if (size == 0) {
+        return NULL;
+    }
+
+    void *addr = malloc(size);
+    if (addr) {
+        memset(addr, 0, size);
+    }
+    return addr;
 }
 
 int thrd_create(thrd_t *thr, thrd_start_t func, void *arg) {

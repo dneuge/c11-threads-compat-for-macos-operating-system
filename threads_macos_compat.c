@@ -106,6 +106,30 @@ int mtx_lock(mtx_t *mutex) {
     return err ? thrd_error : thrd_success;
 }
 
+int mtx_trylock(mtx_t *mutex) {
+    int err = pthread_mutex_trylock(mutex);
+    if (err) {
+        printf("[threads_macos_compat] pthread_mutex_trylock error: %d %s\n", err, strerror(err));
+    }
+
+    return err ? thrd_error : thrd_success;
+}
+
+int mtx_timedlock(mtx_t *mutex, const struct timespec *time_point) {
+    // FIXME: C11 time_point should be UTC-based but POSIX threads do not specify any time zone ("system time"?)
+    int err = pthread_mutex_timedlock(mutex, time_point);
+    if (err) {
+        if (err == ETIMEDOUT) {
+            return thrd_timedout;
+        }
+
+        printf("[threads_macos_compat] pthread_mutex_timedlock error: %d %s\n", err, strerror(err));
+        return thrd_error;
+    }
+
+    return thrd_success;
+}
+
 int mtx_unlock(mtx_t *mutex) {
     int err = pthread_mutex_unlock(mutex);
     if (err) {

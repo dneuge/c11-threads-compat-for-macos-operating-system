@@ -109,7 +109,11 @@ int mtx_lock(mtx_t *mutex) {
 int mtx_trylock(mtx_t *mutex) {
     int err = pthread_mutex_trylock(mutex);
     if (err) {
-        printf("[threads_macos_compat] pthread_mutex_trylock error: %d %s\n", err, strerror(err));
+        if (err == EBUSY) {
+            return thrd_busy;
+        } else {
+            printf("[threads_macos_compat] pthread_mutex_trylock error: %d %s\n", err, strerror(err));
+        }
     }
 
     return err ? thrd_error : thrd_success;

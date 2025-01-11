@@ -58,6 +58,7 @@ typedef int (*thrd_start_t)(void*);
 #define thrd_error (1)
 #define thrd_nomem (2)
 #define thrd_timedout (3)
+#define thrd_busy (4)
 
 #define mtx_plain (1 << 0)
 #define mtx_recursive (1 << 1)

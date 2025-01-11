@@ -1,6 +1,6 @@
 /**
  * C11 threads compatibility wrapper for the macOS(r) operating system
- * Copyright (c) 2024 Daniel Neugebauer
+ * Copyright (c) 2024-2025 Daniel Neugebauer
  * https://github.com/dneuge/c11-threads-compat-for-macos-operating-system
  * 
  * Released under MIT license, unless marked otherwise in the code that follows:

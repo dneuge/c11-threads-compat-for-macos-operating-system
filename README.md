@@ -29,6 +29,10 @@ IF(NOT HAVE_C11_THREADS)
 ENDIF()
 ```
 
+## Configuration Options
+
+The macOS® operating system does not support locking mutexes with a timeout (POSIX: `pthread_mutex_timedlock`), so this implementation of `mtx_timedlock` repeatedly calls `pthread_mutex_trylock` instead, putting the thread to sleep between checks. By default, this happens at intervals of 1 millisecond. Other values can be set via define `THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOS` in nanoseconds. As the default is only defined when missing, this is possible through compiler arguments without source code modification.
+
 ## License
 
 All sources and original files of this project are provided under [MIT license](LICENSE.md), unless declared otherwise

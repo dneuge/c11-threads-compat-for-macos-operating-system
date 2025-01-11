@@ -43,14 +43,24 @@
  * project.
  */
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <errno.h>
 #include <sched.h>
 
 #include "threads_macos_compat.h"
+
+#ifndef THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOS
+#define THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOS 1000 /* default to 1ms */
+#endif
+
+#define THREADS_COMPAT_NANOS_PER_SECOND (1000000000)
+#define THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_FULL_SECONDS (THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOS / THREADS_COMPAT_NANOS_PER_SECOND)
+#define THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOSECOND_PART (THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOS % THREADS_COMPAT_NANOS_PER_SECOND)
 
 int mtx_init(mtx_t *mutex, int type) {
     int err = 0;
@@ -119,19 +129,103 @@ int mtx_trylock(mtx_t *mutex) {
     return err ? thrd_error : thrd_success;
 }
 
-int mtx_timedlock(mtx_t *mutex, const struct timespec *time_point) {
-    // FIXME: C11 time_point should be UTC-based but POSIX threads do not specify any time zone ("system time"?)
-    int err = pthread_mutex_timedlock(mutex, time_point);
-    if (err) {
-        if (err == ETIMEDOUT) {
-            return thrd_timedout;
-        }
+static inline bool timespec_is_greater_than(const struct timespec *a, const struct timespec *b) {
+    if (a->tv_sec > b->tv_sec) {
+        return true;
+    }
 
-        printf("[threads_macos_compat] pthread_mutex_timedlock error: %d %s\n", err, strerror(err));
+    if (a->tv_sec < b->tv_sec) {
+        return false;
+    }
+
+    return a->tv_nsec > b->tv_nsec;
+}
+
+int mtx_timedlock(mtx_t *mutex, const struct timespec *time_point) {
+    // macOS does not have pthread_mutex_timedlock, so unfortunately we need to work around it
+
+    int res = 0;
+    struct timespec now = {0};
+    struct timespec remaining = {0};
+    struct timespec sleep_time = {
+        .tv_sec = THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_FULL_SECONDS,
+        .tv_nsec = THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOSECOND_PART,
+    };
+
+    struct timespec latest_full_sleep_start = {
+        .tv_sec = time_point->tv_sec - THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_FULL_SECONDS,
+        .tv_nsec = time_point->tv_sec - THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOSECOND_PART,
+    };
+    if (latest_full_sleep_start.tv_nsec < 0) {
+        latest_full_sleep_start.tv_sec--;
+        latest_full_sleep_start.tv_nsec += THREADS_COMPAT_NANOS_PER_SECOND;
+    }
+    if (latest_full_sleep_start.tv_nsec < 0) {
+        printf("[threads_macos_compat] mtx_timedlock calculated negative nanoseconds for latest full sleep\n");
+        return thrd_error;
+    }
+    if (latest_full_sleep_start.tv_sec < 0) {
+        printf("[threads_macos_compat] mtx_timedlock calculated negative seconds for latest full sleep\n");
         return thrd_error;
     }
 
-    return thrd_success;
+    while (true) {
+        res = pthread_mutex_trylock(mutex);
+        if (!res) {
+            return thrd_success;
+        }
+
+        if (res != EBUSY) {
+            printf("[threads_macos_compat] mtx_timedlock/pthread_mutex_trylock error: %d %s\n", res, strerror(res));
+            return thrd_error;
+        }
+
+        res = timespec_get(&now, TIME_UTC);
+        if (!res) {
+            printf("[threads_macos_compat] mtx_timedlock/timespec_get failed\n");
+            return thrd_error;
+        }
+
+        if (timespec_is_greater_than(&now, time_point)) {
+            return thrd_timedout;
+        }
+
+        if (!timespec_is_greater_than(&now, &latest_full_sleep_start)) {
+            // there's enough time for at least one regular check interval to sleep for
+            // this reset should usually not be needed but it's safer to restore original behaviour just in case
+            // the real-time clock rolls back after we already reached the presumed last sleep cycle
+            sleep_time.tv_sec = THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_FULL_SECONDS;
+            sleep_time.tv_nsec = THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOSECOND_PART;
+        } else {
+            // we have less time to remain for sleeping than the regular check interval, calculate time remaining until
+            // time_point is reached
+            sleep_time.tv_sec = time_point->tv_sec - now.tv_sec;
+            sleep_time.tv_nsec = time_point->tv_nsec - now.tv_nsec;
+            if (sleep_time.tv_nsec < 0) {
+                sleep_time.tv_sec--;
+                sleep_time.tv_nsec += THREADS_COMPAT_NANOS_PER_SECOND;
+            }
+            if (sleep_time.tv_nsec < 0) {
+                printf("[threads_macos_compat] mtx_timedlock calculated negative nanoseconds for last sleep\n");
+                return thrd_error;
+            }
+            if (sleep_time.tv_sec < 0) {
+                printf("[threads_macos_compat] mtx_timedlock calculated negative seconds for last sleep\n");
+                return thrd_error;
+            }
+        }
+
+        if (!(sleep_time.tv_sec || sleep_time.tv_nsec)) {
+            // we somehow ended up at zero sleep time, just yield thread and retry
+            sched_yield();
+        } else {
+            res = nanosleep(&sleep_time, &remaining);
+            if (res) {
+                printf("[threads_macos_compat] mtx_timedlock/nanosleep error: %d %s\n", res, strerror(res));
+                return thrd_error;
+            }
+        }
+    }
 }
 
 int mtx_unlock(mtx_t *mutex) {

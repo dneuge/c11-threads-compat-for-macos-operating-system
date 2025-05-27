@@ -310,7 +310,7 @@ int thrd_join(thrd_t thr, int *res) {
     return thrd_success;
 }
 
-void inline thrd_yield() {
+inline void thrd_yield() {
     sched_yield();
 }
 

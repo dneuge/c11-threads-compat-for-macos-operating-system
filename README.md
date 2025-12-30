@@ -12,6 +12,17 @@ The code *may* also work for Linux, where it is generally should not be required
 
 ... which was also the point of starting this project: I already had Linux (native support) and Windows (using Mesa's compatibility layer) implemented on my projects when I wanted to add Mac® compatibility and was surprised that C11 threads are not yet supported as of macOS® version 15 (2024). I didn't want to add another dependency, so I started writing my own wrapper. Well, uh, I guess now there's yet another one. :)
 
+## Split or static?
+
+Two versions are offered, containing the same implementation but linking in different ways:
+
+- the regular "split" version consists of a header and an implementation file ([`threads_macos_compat.h`](threads_macos_compat.h) + [`threads_macos_compat.c`](threads_macos_compat.c))
+- the optional "static" version combines both into a single header file ([`threads_macos_compat_static.h`](threads_macos_compat_static.h)) with all functions being declared `static`
+
+The "static" version was added specifically for use of this wrapper in libraries where the compiled artifact needs to be linked with other code afterwards which could cause conflicts if another wrapper for the same symbols would be present on the downstream project.
+
+Unless the wrapper is required to be kept local, the "split" version is recommended to be used instead.
+
 ## How to use (recommendation)
 
 You are free to just drop the source files into your project and adapt them as needed to simplify dependency management. Please mind the MIT license and copyright/license comment that is in those files. You are welcome to provide improvements back to this project as you see fit. This should also be preferred over copying modified versions across projects (it's better to share it in a central location like this repository).

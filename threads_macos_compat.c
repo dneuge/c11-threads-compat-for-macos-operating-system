@@ -365,3 +365,34 @@ int cnd_timedwait(cnd_t *cond, mtx_t *mutex, const struct timespec *time_point) 
     
     return thrd_success;
 }
+
+inline void* tss_get(tss_t key) {
+    return pthread_getspecific(key);
+}
+
+int tss_set(tss_t key, void *val) {
+    int err = pthread_setspecific(key, val);
+    if (err) {
+        printf("[threads_macos_compat] pthread_setspecific error: %d %s\n", err, strerror(err));
+        return thrd_error;
+    }
+
+    return thrd_success;
+}
+
+int tss_create(tss_t *key, tss_dtor_t dtor) {
+    int err = pthread_key_create(key, dtor);
+    if (err) {
+        printf("[threads_macos_compat] pthread_key_create error: %d %s\n", err, strerror(err));
+        return thrd_error;
+    }
+
+    return thrd_success;
+}
+
+void tss_delete(tss_t key) {
+    int err = pthread_key_delete(key);
+    if (err) {
+        printf("[threads_macos_compat] pthread_key_delete error: %d %s\n", err, strerror(err));
+    }
+}

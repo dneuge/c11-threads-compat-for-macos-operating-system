@@ -54,6 +54,9 @@ typedef pthread_cond_t cnd_t;
 
 typedef int (*thrd_start_t)(void*);
 
+typedef pthread_key_t tss_t;
+typedef void (*tss_dtor_t)(void*);
+
 #define thrd_success (0)
 #define thrd_error (1)
 #define thrd_nomem (2)
@@ -80,5 +83,10 @@ void cnd_destroy(cnd_t *cond);
 int cnd_wait(cnd_t *cond, mtx_t *mutex);
 int cnd_broadcast(cnd_t *cond);
 int cnd_timedwait(cnd_t *cond, mtx_t *mutex, const struct timespec *time_point);
+
+void* tss_get(tss_t key);
+int tss_set(tss_t key, void *val);
+int tss_create(tss_t *key, tss_dtor_t dtor);
+void tss_delete(tss_t key);
 
 #endif

@@ -1,5 +1,5 @@
 /**
- * C11 threads compatibility wrapper for the macOS(r) operating system
+ * C11 threads compatibility wrapper for the macOS operating system
  * Copyright (c) 2024-2025 Daniel Neugebauer
  * https://github.com/dneuge/c11-threads-compat-for-macos-operating-system
  * 

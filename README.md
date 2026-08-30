@@ -1,16 +1,16 @@
-# C11 threads compatibility wrapper for the macOS® operating system
+# C11 threads compatibility wrapper for the macOS operating system
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE.md)
 
-This project provides a simple, light-weight replacement for absent C11 thread support (`threads.h`) in the macOS® operating system by wrapping calls to POSIX or other system calls instead.
+This project provides a simple, light-weight replacement for absent C11 thread support (`threads.h`) in the macOS operating system by wrapping calls to POSIX or other system calls instead.
 
 **Note that not all C11 thread features are supported.**
 
-While Clang, as distributed with the Xcode® development suite, does have C11 *language* support, the system's standard libraries need to support *non-language* C11 features as well, to be used. Support of C11 threads is one of those non-language features.
+While Clang, as distributed with the Xcode development suite, does have C11 *language* support, the system's standard libraries need to support *non-language* C11 features as well, to be used. Support of C11 threads is one of those non-language features.
 
-The code *may* also work for Linux, although it should generally not be required on any half-way modern Linux distribution. Windows support is entirely out of scope and will not be added (I recommend using the wrapper that comes with [Mesa](https://mesa3d.org/) if you need that - note that MSVC + Win10/11 SDKs support C11 threads natively). If you seek support for more than just one platform, there are also libraries covering all operating systems in one go, so you may want to take a look at those instead. The goal of this small project is to just add compatibility for Mac® computers, e.g. if you have already figured everything out for other platforms.
+The code *may* also work for Linux, although it should generally not be required on any half-way modern Linux distribution. Windows support is entirely out of scope and will not be added (I recommend using the wrapper that comes with [Mesa](https://mesa3d.org/) if you need that - note that MSVC + Win10/11 SDKs support C11 threads natively). If you seek support for more than just one platform, there are also libraries covering all operating systems in one go, so you may want to take a look at those instead. The goal of this small project is to just add compatibility for Mac computers, e.g. if you have already figured everything out for other platforms.
 
-... which was also the point of starting this project: I already had Linux (native support) and Windows (using Mesa's compatibility layer) implemented on my projects when I wanted to add Mac® compatibility and was surprised that C11 threads are not yet supported as of macOS® version 15 (2024). I didn't want to add another dependency, so I started writing my own wrapper. Well, uh, I guess now there's yet another one. :)
+... which was also the point of starting this project: I already had Linux (native support) and Windows (using Mesa's compatibility layer) implemented on my projects when I wanted to add Mac compatibility and was surprised that C11 threads are not yet supported as of macOS version 15 (2024). I didn't want to add another dependency, so I started writing my own wrapper. Well, uh, I guess now there's yet another one. :)
 
 ## Split or static?
 
@@ -42,7 +42,7 @@ ENDIF()
 
 ## Configuration Options
 
-The macOS® operating system does not support locking mutexes with a timeout (POSIX: `pthread_mutex_timedlock`), so this implementation of `mtx_timedlock` repeatedly calls `pthread_mutex_trylock` instead, putting the thread to sleep between checks. By default, this happens at intervals of 1 millisecond. Other values can be set via define `THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOS` in nanoseconds. As the default is only defined when missing, this is possible through compiler arguments without source code modification.
+The macOS operating system does not support locking mutexes with a timeout (POSIX: `pthread_mutex_timedlock`), so this implementation of `mtx_timedlock` repeatedly calls `pthread_mutex_trylock` instead, putting the thread to sleep between checks. By default, this happens at intervals of 1 millisecond. Other values can be set via define `THREADS_COMPAT_TIMED_LOCK_CHECK_INTERVAL_NANOS` in nanoseconds. As the default is only defined when missing, this is possible through compiler arguments without source code modification.
 
 ## License
 
